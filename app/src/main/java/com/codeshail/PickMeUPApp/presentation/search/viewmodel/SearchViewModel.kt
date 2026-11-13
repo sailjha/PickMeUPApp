@@ -1,0 +1,52 @@
+package com.codeshail.pickmeupapp.presentation.search.viewmodel
+
+
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.codeshail.pickmeupapp.domain.models.MovieList
+import com.codeshail.pickmeupapp.domain.usecases.SearchListInfoUseCase
+import com.codeshail.pickmeupapp.utils.NetworkResult
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class SearchViewModel @Inject constructor(
+    private val searchListInfoUseCase: SearchListInfoUseCase,
+) : ViewModel() {
+
+    private var job: Job? = null
+
+    private val _trendingMedia = MutableLiveData<NetworkResult<MovieList>>()
+    val trendingMedia: LiveData<NetworkResult<MovieList>> = _trendingMedia
+
+    private val _searchedMedia: MutableLiveData<NetworkResult<MovieList>> =
+        MutableLiveData()
+    val searchedMedia: LiveData<NetworkResult<MovieList>> = _searchedMedia
+
+    fun trendingMovies() = viewModelScope.launch {
+        job?.cancel()
+        viewModelScope.launch(Dispatchers.IO) {
+            searchListInfoUseCase.getTrendingMovies().onEach { result ->
+                _trendingMedia.postValue(result)
+            }.launchIn(this)
+        }
+    }
+
+    fun searchMedia(searchQuery: String) {
+        job?.cancel()
+        job = viewModelScope.launch(Dispatchers.IO) {
+            delay(500)
+            searchListInfoUseCase.searchMovieData(searchQuery).onEach { result ->
+                _searchedMedia.postValue(result)
+            }.launchIn(this)
+        }
+    }
+}
